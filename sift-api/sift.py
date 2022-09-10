@@ -8,9 +8,8 @@ import io
 from base64 import b64decode, b64encode
 import requests
 import boto3
-import os 
-sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi", )
 
+sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi", )
 
 app = socketio.ASGIApp(sio)
 
@@ -22,18 +21,26 @@ async def connect(sid, environ):
 @sio.event
 async def disconnect(sid):
     print('disconnect ', sid)
+    
 
 @sio.event
 async def doSIFT(sid, data):
+        
         s3 = boto3.resource('s3', aws_access_key_id="AKIAWEVT3WY3LBWM4LXX", aws_secret_access_key="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")
-        # data1 = b64decode(data['images'][0])
-        # data2 = b64decode(data['images'][1])
+
+
         url = "https://sift-bucket-1.s3.ap-south-1.amazonaws.com/"
+
         response1 = requests.get(url+data['images'][0])
         response2 = requests.get(url+data['images'][1])
-
-        pimg = Image.open(io.BytesIO(response1.content))
+        base64_data1 = str(response1.content)
+        base64_data1 = base64_data1.split(',', 1)[1]
+        ref_data = b64decode(base64_data1)
+        pimg = Image.open(io.BytesIO(ref_data))
         pimg2 = Image.open(io.BytesIO(response2.content))
+
+        # pimg = Image.open(pimg)
+        # pimg2 = Image.open(pimg2)
 
         # pimg = Image.open(io.BytesIO(data1))
         # pimg2 = Image.open(io.BytesIO(data2))
@@ -86,23 +93,23 @@ async def doSIFT(sid, data):
         destination_image = cv.warpPerspective(imm, matrix, (w, h))
         
         img = Image.fromarray(destination_image, 'RGB')
+
         # buffered = io.BytesIO()
         # img.save(buffered, format="JPEG")
         # img_str = b64encode(buffered.getvalue())
         # final_output = {
         #     "Transformed Image": img_str
         # }
-        
-        img.save('trans.jpeg', 'JPEG')
-        print("image is transformed")
 
+        img.save('trans.jpeg', 'JPEG')
+        
 
         s3.meta.client.upload_file("trans.jpeg", 'sift-bucket-1', "trans.jpeg", ExtraArgs={'ACL': 'public-read', 'ContentType': 'image/jpeg'})
-        return await sio.emit("result", {"result": "Successfully saved as trans.jpeg in S3 Bucket"}, to=sid)
+        print("image is transformed")
+        return await sio.emit("result", {"result": "Image Saved successfully"}, to=sid)
 
 
 
-#ESI.local 192.168.2.95
 if __name__ == "__main__":
     config = uvicorn.Config("sift:app", port=5000, log_level="info")
     server = uvicorn.Server(config)

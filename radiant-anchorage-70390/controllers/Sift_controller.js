@@ -1,9 +1,8 @@
-require("dotenv").config()
 
-const imageToBase64=require("image-to-base64");
+
 const { io } = require("socket.io-client");
 
-const fs = require("fs");
+
 
 const posts3details = async (req, res) =>{
         
@@ -13,7 +12,7 @@ const posts3details = async (req, res) =>{
 
         sio.on("connect", async () => {
             console.log("connected");
-                    sio.emit('doSIFT', {images:[ref,test]})
+            sio.emit('doSIFT', {images:[ref,test]})
         })
 
         sio.on("result", (result)=> res.status(200).json({message: result.result}))
